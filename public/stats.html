@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thống kê KQXS</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #222; font-size: 14px; }
+
+    /* ── Header ─────────────────────────────────── */
+    header {
+      background: #c0392b; color: #fff;
+      padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    header h1 { font-size: 1.15rem; }
+    header a { color: #ffc; text-decoration: none; font-size: .82rem; margin-left: auto; }
+    header a:hover { text-decoration: underline; }
+
+    /* ── Filter bar ──────────────────────────────── */
+    .filter-bar {
+      background: #fff; border-bottom: 1px solid #ddd;
+      padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .filter-group label { font-size: .78rem; color: #666; font-weight: 600; }
+    .filter-bar select,
+    .filter-bar input[type="text"] {
+      border: 1px solid #ccc; border-radius: 4px;
+      padding: 6px 10px; font-size: .88rem; outline: none;
+      background: #fff;
+    }
+    .filter-bar select:focus,
+    .filter-bar input:focus { border-color: #c0392b; }
+    .btn-load {
+      background: #c0392b; color: #fff; border: none;
+      padding: 7px 20px; border-radius: 4px; cursor: pointer;
+      font-size: .9rem; font-weight: 600; align-self: flex-end;
+    }
+    .btn-load:hover { background: #a93226; }
+
+    /* ── Stat type tabs ──────────────────────────── */
+    .stat-tabs {
+      background: #7f1414;
+      display: flex; overflow-x: auto; gap: 0;
+    }
+    .stat-tab {
+      padding: 10px 20px; color: #ffccc9; font-weight: 600; font-size: .88rem;
+      cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent;
+      transition: all .2s; user-select: none;
+    }
+    .stat-tab:hover { background: rgba(255,255,255,.1); }
+    .stat-tab.active { color: #fff; border-bottom-color: #fff; background: rgba(255,255,255,.15); }
+
+    /* ── Main content ────────────────────────────── */
+    main { padding: 20px; }
+
+    .loading { text-align: center; padding: 60px; color: #999; font-size: 1rem; }
+    .empty   { text-align: center; padding: 60px; color: #aaa; }
+
+    /* ── Card wrapper ────────────────────────────── */
+    .stat-card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08); overflow: hidden;
+    }
+    .stat-card-title {
+      background: #c0392b; color: #fff;
+      padding: 10px 16px; font-weight: 700; font-size: .95rem;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .stat-card-title small { font-weight: 400; font-size: .8rem; opacity: .85; margin-left: auto; }
+
+    /* ── Tables ──────────────────────────────────── */
+    .tbl { width: 100%; border-collapse: collapse; }
+    .tbl th {
+      background: #fafafa; border-bottom: 2px solid #eee;
+      padding: 8px 10px; text-align: left; font-size: .82rem;
+      color: #555; white-space: nowrap; position: sticky; top: 0; z-index: 1;
+    }
+    .tbl td { padding: 6px 10px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:hover td { background: #fef9f9; }
+    .tbl td.num-cell { text-align: center; }
+    .tbl td.lo-cell {
+      font-size: 1.1rem; font-weight: 800; text-align: center;
+      width: 54px;
+    }
+    .tbl td.rank-cell { color: #aaa; font-size: .8rem; text-align: center; width: 36px; }
+    .tbl th.center, .tbl td.center { text-align: center; }
+
+    /* Lô cell color tiers */
+    .lo-hot  { color: #e74c3c; }
+    .lo-warm { color: #e67e22; }
+    .lo-cool { color: #2980b9; }
+    .lo-cold { color: #bbb; }
+
+    /* Gan tiers */
+    .gan-high { color: #e74c3c; font-weight: 700; }
+    .gan-mid  { color: #e67e22; }
+    .gan-low  { color: #555; }
+
+    /* Bar */
+    .bar-wrap { width: 120px; min-width: 80px; }
+    .bar-bg { background: #f0f0f0; border-radius: 3px; height: 8px; overflow: hidden; }
+    .bar-fill { height: 8px; border-radius: 3px; background: #c0392b; transition: width .3s; }
+    .bar-fill.blue  { background: #2980b9; }
+    .bar-fill.green { background: #27ae60; }
+
+    /* ── Đầu/Đuôi layout ─────────────────────────── */
+    .dd-wrap { display: flex; gap: 20px; flex-wrap: wrap; padding: 16px; }
+    .dd-section { flex: 1 1 260px; }
+    .dd-section h3 { font-size: .9rem; font-weight: 700; margin-bottom: 10px; color: #555; }
+    .dd-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 8px;
+    }
+    .dd-label { width: 24px; font-weight: 700; font-size: 1.05rem; text-align: center; flex-shrink: 0; }
+    .dd-bar-bg { flex: 1; background: #f0f0f0; border-radius: 4px; height: 20px; overflow: hidden; position: relative; }
+    .dd-bar-fill { height: 100%; border-radius: 4px; background: #c0392b; min-width: 2px; transition: width .4s; }
+    .dd-bar-fill.blue { background: #2980b9; }
+    .dd-count { width: 40px; text-align: right; font-size: .85rem; color: #555; }
+    .dd-pct   { width: 44px; text-align: right; font-size: .78rem; color: #999; }
+
+    /* ── Scroll container ────────────────────────── */
+    .tbl-scroll { max-height: 600px; overflow-y: auto; }
+
+    /* ── Grid layout for 2-col stats ────────────── */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .stat-grid { grid-template-columns: 1fr; } }
+
+    /* ── Chu kỳ highlight ────────────────────────── */
+    .ck-fast  { color: #e74c3c; font-weight: 700; }
+    .ck-med   { color: #e67e22; }
+    .ck-slow  { color: #2980b9; }
+    .ck-none  { color: #ccc; }
+
+    /* ── Ma trận lô ──────────────────────────────── */
+    .matrix-outer { overflow-x: auto; overflow-y: auto; max-height: 640px; }
+    .matrix-tbl {
+      border-collapse: collapse;
+      font-size: .75rem;
+      white-space: nowrap;
+    }
+    .matrix-tbl th, .matrix-tbl td {
+      border: 1px solid #e8e8e8;
+      padding: 0;
+      text-align: center;
+    }
+    /* Sticky header row + date column */
+    .matrix-tbl thead th { position: sticky; top: 0; z-index: 3; background: #fafafa; }
+    .matrix-tbl td.m-date, .matrix-tbl th.m-date {
+      position: sticky; left: 0; z-index: 2;
+      background: #fafafa; font-weight: 600;
+      min-width: 82px; padding: 3px 6px;
+      border-right: 2px solid #ddd;
+    }
+    .matrix-tbl thead th.m-date { z-index: 4; }
+    .matrix-tbl th.m-num {
+      width: 26px; min-width: 26px; max-width: 26px;
+      font-size: .7rem; color: #444; font-weight: 700;
+      padding: 4px 0;
+    }
+    .matrix-tbl td.m-cell {
+      width: 26px; min-width: 26px; max-width: 26px;
+      height: 22px; line-height: 22px;
+      font-size: .72rem; font-weight: 600; color: #fff;
+      cursor: default;
+    }
+    /* Summary row */
+    .matrix-tbl tr.m-summary td { background: #fff3cd; color: #856404; font-weight: 700; font-size: .72rem; height: 24px; line-height: 24px; }
+    .matrix-tbl tr.m-summary td.m-date { background: #ffd369; color: #5a4000; font-size: .75rem; border-right: 2px solid #ddd; }
+    /* ĐB highlight */
+    .m-cell.is-db { outline: 2px solid #e74c3c; outline-offset: -2px; z-index: 1; }
+    /* Heatmap cells */
+    .m-heat-0 { background: #fff; color: #ddd; }
+    .m-heat-1 { background: #ffd5d5; color: #c00; }
+    .m-heat-2 { background: #ffaaaa; color: #900; }
+    .m-heat-3 { background: #ff7070; color: #700; }
+    .m-heat-4 { background: #e74c3c; color: #fff; }
+
+    /* ── Cặp lô ──────────────────────────────────── */
+    .pair-badge {
+      display: inline-flex; gap: 4px; align-items: center;
+    }
+    .pair-num {
+      display: inline-block;
+      background: #c0392b; color: #fff;
+      font-weight: 800; font-size: .95rem;
+      width: 34px; height: 34px; line-height: 34px;
+      text-align: center; border-radius: 50%;
+    }
+    .pair-sep { color: #aaa; font-size: 1rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+  </svg>
+  <h1>Thống kê KQXS</h1>
+  <a href="/">← Kết quả</a>
+</header>
+
+<!-- Filter bar -->
+<div class="filter-bar">
+  <div class="filter-group">
+    <label>Miền</label>
+    <select id="sel-region">
+      <option value="mb">Miền Bắc</option>
+      <option value="mn" selected>Miền Nam</option>
+      <option value="mt">Miền Trung</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Tỉnh (tuỳ chọn)</label>
+    <input type="text" id="inp-province" placeholder="VD: XSHCM" style="width:140px" />
+  </div>
+  <div class="filter-group">
+    <label>Khoảng thời gian</label>
+    <select id="sel-days">
+      <option value="7">7 ngày</option>
+      <option value="14">14 ngày</option>
+      <option value="30" selected>30 ngày</option>
+      <option value="60">60 ngày</option>
+      <option value="90">90 ngày</option>
+      <option value="180">6 tháng</option>
+      <option value="365">1 năm</option>
+    </select>
+  </div>
+  <!-- Parity filter: chỉ hiện cho lo-tan-suat, lo-gan, lo-matrix -->
+  <div class="filter-group" id="grp-parity" style="display:none">
+    <label>Loại số</label>
+    <select id="sel-parity">
+      <option value="all">Tất cả</option>
+      <option value="even">Chỉ số chẵn</option>
+      <option value="odd">Chỉ số lẻ</option>
+    </select>
+  </div>
+  <!-- Top N: chỉ hiện cho cap-lo -->
+  <div class="filter-group" id="grp-top" style="display:none">
+    <label>Hiển thị top</label>
+    <select id="sel-top">
+      <option value="20">Top 20</option>
+      <option value="50">Top 50</option>
+      <option value="100">Top 100</option>
+      <option value="200">Top 200</option>
+    </select>
+  </div>
+  <button class="btn-load" onclick="loadStats()">Xem thống kê</button>
+</div>
+
+<!-- Stat type tabs -->
+<div class="stat-tabs">
+  <div class="stat-tab active" data-stat="lo-tan-suat">Tần suất lô</div>
+  <div class="stat-tab" data-stat="lo-gan">Lô gan</div>
+  <div class="stat-tab" data-stat="de-tan-suat">Tần suất đề</div>
+  <div class="stat-tab" data-stat="de-gan">Đề gan</div>
+  <div class="stat-tab" data-stat="dau-duoi">Đầu / Đuôi</div>
+  <div class="stat-tab" data-stat="chu-ky">Chu kỳ lô</div>
+  <div class="stat-tab" data-stat="lo-matrix">Ma trận lô</div>
+  <div class="stat-tab" data-stat="cap-lo">Cặp lô</div>
+</div>
+
+<main id="main">
+  <div class="empty">Chọn bộ lọc và nhấn <strong>Xem thống kê</strong></div>
+</main>
+
+<script>
+let currentStat = 'lo-tan-suat'
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+const PARITY_TABS = new Set(['lo-tan-suat', 'lo-gan', 'lo-matrix'])
+const TOP_TABS    = new Set(['cap-lo'])
+const MATRIX_DAYS_OPTIONS = [
+  ['30','30 ngày'],['60','60 ngày'],['99','99 ngày'],
+  ['180','6 tháng'],['365','1 năm'],['500','500 ngày'],['1000','1000 ngày'],
+]
+const DEFAULT_DAYS_OPTIONS = [
+  ['7','7 ngày'],['14','14 ngày'],['30','30 ngày'],
+  ['60','60 ngày'],['90','90 ngày'],['180','6 tháng'],['365','1 năm'],
+]
+
+function updateFilterVis(stat) {
+  document.getElementById('grp-parity').style.display = PARITY_TABS.has(stat) ? '' : 'none'
+  document.getElementById('grp-top').style.display    = TOP_TABS.has(stat)    ? '' : 'none'
+
+  // Đổi options days cho ma trận
+  const selDays = document.getElementById('sel-days')
+  const curVal  = selDays.value
+  const opts    = stat === 'lo-matrix' ? MATRIX_DAYS_OPTIONS : DEFAULT_DAYS_OPTIONS
+  selDays.innerHTML = opts.map(([v, l]) => `<option value="${v}"${v === curVal ? ' selected' : ''}>${l}</option>`).join('')
+  // fallback nếu curVal không có trong options mới
+  if (!opts.find(([v]) => v === curVal)) selDays.value = opts[2][0]
+}
+
+document.querySelectorAll('.stat-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.stat-tab').forEach(t => t.classList.remove('active'))
+    tab.classList.add('active')
+    currentStat = tab.dataset.stat
+    updateFilterVis(currentStat)
+    loadStats()
+  })
+})
+
+// ── Filter helpers ─────────────────────────────────────────────────────────
+function buildQuery() {
+  const region   = document.getElementById('sel-region').value
+  const province = document.getElementById('inp-province').value.trim()
+  const days     = document.getElementById('sel-days').value
+  const parity   = document.getElementById('sel-parity').value
+  const top      = document.getElementById('sel-top').value
+
+  let q = `days=${days}`
+  if (province) q += `&province=${encodeURIComponent(province)}`
+  else          q += `&region=${region}`
+  if (PARITY_TABS.has(currentStat) && parity !== 'all') q += `&parity=${parity}`
+  if (TOP_TABS.has(currentStat))  q += `&top=${top}`
+  return q
+}
+
+function periodLabel() {
+  const days     = document.getElementById('sel-days').value
+  const province = document.getElementById('inp-province').value.trim()
+  const selR     = document.getElementById('sel-region')
+  const region   = selR.options[selR.selectedIndex].text
+  const scope    = province ? province.toUpperCase() : region
+  return `${scope} — ${days} ngày gần nhất`
+}
+
+// ── Main loader ────────────────────────────────────────────────────────────
+async function loadStats() {
+  const main = document.getElementById('main')
+  main.innerHTML = '<div class="loading">Đang tải dữ liệu...</div>'
+
+  const q = buildQuery()
+  try {
+    const res  = await fetch(`/api/stats/${currentStat}?${q}`)
+    const data = await res.json()
+    if (!data.success) throw new Error(data.message || 'Lỗi API')
+    render(currentStat, data)
+  } catch (e) {
+    main.innerHTML = `<div class="empty" style="color:#e74c3c">Lỗi: ${e.message}</div>`
+  }
+}
+
+// ── Renderers ──────────────────────────────────────────────────────────────
+function render(stat, data) {
+  const fns = {
+    'lo-tan-suat': renderLoTanSuat,
+    'lo-gan':      renderLoGan,
+    'de-tan-suat': renderDeTanSuat,
+    'de-gan':      renderDeGan,
+    'dau-duoi':    renderDauDuoi,
+    'chu-ky':      renderChuKy,
+    'lo-matrix':   renderLoMatrix,
+    'cap-lo':      renderCapLo,
+  }
+  ;(fns[stat] || (() => {}))(data)
+}
+
+// ── Tần suất lô ───────────────────────────────────────────────────────────
+function renderLoTanSuat(data) {
+  const list = data.data || []
+  const maxCount = list[0]?.count || 1
+  const total = list.reduce((s, r) => s + r.count, 0)
+
+  const rows = list.map((r, i) => {
+    const pct = maxCount ? Math.round(r.count / maxCount * 100) : 0
+    const cls = i < 10 ? 'lo-hot' : i < 20 ? 'lo-warm' : i >= 90 ? 'lo-cold' : ''
+    return `<tr>
+      <td class="rank-cell">${i + 1}</td>
+      <td class="lo-cell ${cls}">${r.lo}</td>
+      <td class="center">${r.dau}</td>
+      <td class="center">${r.duoi}</td>
+      <td class="center"><strong>${r.count}</strong></td>
+      <td>
+        <div class="bar-wrap">
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+        </div>
+      </td>
+    </tr>`
+  }).join('')
+
+  const parityNote = data.parity !== 'all' ? ` · ${data.parity === 'even' ? 'Số chẵn' : 'Số lẻ'}` : ''
+  document.getElementById('main').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card-title">
+        Tần suất xuất hiện lô (00–99)
+        <small>${periodLabel()}${parityNote} · Tổng: ${total} lần</small>
+      </div>
+      <div class="tbl-scroll">
+        <table class="tbl">
+          <thead><tr>
+            <th class="center">#</th>
+            <th class="center">Lô</th>
+            <th class="center">Đầu</th>
+            <th class="center">Đuôi</th>
+            <th class="center">Số lần về</th>
+            <th>Tỷ lệ</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`
+}
+
+// ── Lô gan ────────────────────────────────────────────────────────────────
+function renderLoGan(data) {
+  const list = data.data || []
+  const maxGan = list[0]?.gan ?? 0
+
+  const rows = list.map((r, i) => {
+    const gan = r.gan
+    const ganCls = gan === null ? 'ck-none' : gan >= 30 ? 'gan-high' : gan >= 15 ? 'gan-mid' : 'gan-low'
+    const pct = maxGan && gan ? Math.round(gan / maxGan * 100) : 0
+    return `<tr>
+      <td class="rank-cell">${i + 1}</td>
+      <td class="lo-cell ${i < 10 ? 'lo-hot' : ''}">${r.lo}</td>
+      <td class="center">${r.dau}</td>
+      <td class="center">${r.duoi}</td>
+      <td class="center ${ganCls}">${gan !== null ? gan + ' ngày' : '—'}</td>
+      <td>
+        <div class="bar-wrap">
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background:${gan >= 30 ? '#e74c3c' : '#e67e22'}"></div></div>
+        </div>
+      </td>
+      <td style="color:#999;font-size:.82rem">${r.lastDate || '—'}</td>
+    </tr>`
+  }).join('')
+
+  const parityNote = data.parity !== 'all' ? ` · ${data.parity === 'even' ? 'Số chẵn' : 'Số lẻ'}` : ''
+  document.getElementById('main').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card-title">
+        Lô gan — Số ngày chưa về (dài nhất trước)
+        <small>${periodLabel()}${parityNote}</small>
+      </div>
+      <div class="tbl-scroll">
+        <table class="tbl">
+          <thead><tr>
+            <th class="center">#</th>
+            <th class="center">Lô</th>
+            <th class="center">Đầu</th>
+            <th class="center">Đuôi</th>
+            <th class="center">Gan</th>
+            <th>Mức độ</th>
+            <th>Lần cuối về</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`
+}
+
+// ── Tần suất đề ───────────────────────────────────────────────────────────
+function renderDeTanSuat(data) {
+  const list = data.data || []
+  const maxCount = list[0]?.count || 1
+  const total = list.reduce((s, r) => s + r.count, 0)
+
+  const rows = list.map((r, i) => {
+    const pct = maxCount ? Math.round(r.count / maxCount * 100) : 0
+    const cls = i < 5 ? 'lo-hot' : i < 15 ? 'lo-warm' : i >= 90 ? 'lo-cold' : ''
+    return `<tr>
+      <td class="rank-cell">${i + 1}</td>
+      <td class="lo-cell ${cls}">${r.de}</td>
+      <td class="center">${r.dau}</td>
+      <td class="center">${r.duoi}</td>
+      <td class="center"><strong>${r.count}</strong></td>
+      <td>
+        <div class="bar-wrap">
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+        </div>
+      </td>
+    </tr>`
+  }).join('')
+
+  document.getElementById('main').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card-title">
+        Tần suất đề — 2 chữ số cuối G.ĐB
+        <small>${periodLabel()} · Tổng: ${total} lần quay</small>
+      </div>
+      <div class="tbl-scroll">
+        <table class="tbl">
+          <thead><tr>
+            <th class="center">#</th>
+            <th class="center">Đề</th>
+            <th class="center">Đầu</th>
+            <th class="center">Đuôi</th>
+            <th class="center">Số lần về</th>
+            <th>Tỷ lệ</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`
+}
+
+// ── Đề gan ────────────────────────────────────────────────────────────────
+function renderDeGan(data) {
+  const list = data.data || []
+  const maxGan = list[0]?.gan ?? 0
+
+  const rows = list.map((r, i) => {
+    const gan = r.gan
+    const ganCls = gan === null ? 'ck-none' : gan >= 60 ? 'gan-high' : gan >= 30 ? 'gan-mid' : 'gan-low'
+    const pct = maxGan && gan ? Math.round(gan / maxGan * 100) : 0
+    return `<tr>
+      <td class="rank-cell">${i + 1}</td>
+      <td class="lo-cell ${i < 10 ? 'lo-hot' : ''}">${r.de}</td>
+      <td class="center">${r.dau}</td>
+      <td class="center">${r.duoi}</td>
+      <td class="center ${ganCls}">${gan !== null ? gan + ' ngày' : '—'}</td>
+      <td>
+        <div class="bar-wrap">
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background:#e74c3c"></div></div>
+        </div>
+      </td>
+      <td style="color:#999;font-size:.82rem">${r.lastDate || '—'}</td>
+    </tr>`
+  }).join('')
+
+  document.getElementById('main').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card-title">
+        Đề gan — Số ngày G.ĐB chưa về (dài nhất trước)
+        <small>${periodLabel()}</small>
+      </div>
+      <div class="tbl-scroll">
+        <table class="tbl">
+          <thead><tr>
+            <th class="center">#</th>
+            <th class="center">Đề</th>
+            <th class="center">Đầu</th>
+            <th class="center">Đuôi</th>
+            <th class="center">Gan</th>
+            <th>Mức độ</th>
+            <th>Lần cuối về</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`
+}
+
+// ── Đầu / Đuôi ────────────────────────────────────────────────────────────
+function renderDauDuoi(data) {
+  const dauList  = data.dau  || []
+  const duoiList = data.duoi || []
+  const maxDau   = Math.max(...dauList.map(r => r.count), 1)
+  const maxDuoi  = Math.max(...duoiList.map(r => r.count), 1)
+
+  function barRows(list, key, maxVal, color) {
+    return list.map(r => {
+      const pct = Math.round(r.count / maxVal * 100)
+      return `<div class="dd-row">
+        <div class="dd-label">${r[key]}</div>
+        <div class="dd-bar-bg">
+          <div class="dd-bar-fill ${color}" style="width:${pct}%"></div>
+        </div>
+        <div class="dd-count">${r.count}</div>
+        <div class="dd-pct">${r.pct}%</div>
+      </div>`
+    }).join('')
+  }
+
+  document.getElementById('main').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card-title">
+        Thống kê đầu / đuôi
+        <small>${periodLabel()} · Tổng: ${data.total || 0} lô</small>
+      </div>
+      <div class="dd-wrap">
+        <div class="dd-section">
+          <h3>Theo ĐẦU (hàng chục)</h3>
+          ${barRows(dauList, 'dau', maxDau, '')}
+        </div>
+        <div class="dd-section">
+          <h3>Theo ĐUÔI (hàng đơn vị)</h3>
+          ${barRows(duoiList, 'duoi', maxDuoi, 'blue')}
+        </div>
+      </div>
+    </div>`
+}
+
+// ── Chu kỳ lô ─────────────────────────────────────────────────────────────
+function renderChuKy(data) {
+  const list = data.data || []
+  const withCk = list.filter(r => r.chuKy !== null)
+  const maxApp = Math.max(...list.map(r => r.appearances), 1)
+
+  const rows = list.map((r, i) => {
+    const ck = r.chuKy
+    const ckCls = ck === null ? 'ck-none' : ck <= 5 ? 'ck-fast' : ck <= 10 ? 'ck-med' : 'ck-slow'
+    const ckTxt = ck !== null ? ck.toFixed(1) + ' ngày' : '—'
+    const appPct = Math.round(r.appearances / maxApp * 100)
+    return `<tr>
+      <td class="rank-cell">${i + 1}</td>
+      <td class="lo-cell ${ck !== null && ck <= 5 ? 'lo-hot' : ''}">${r.lo}</td>
+      <td class="center">${r.dau}</td>
+      <td class="center">${r.duoi}</td>
+      <td class="center ${ckCls}">${ckTxt}</td>
+      <td class="center">${r.appearances}</td>
+      <td>
+        <div class="bar-wrap">
+          <div class="bar-bg"><div class="bar-fill green" style="width:${appPct}%"></div></div>
+        </div>
+      </td>
+      <td style="color:#999;font-size:.82rem">${r.lastDate || '—'}</td>
+    </tr>`
+  }).join('')
+
+  document.getElementById('main').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card-title">
+        Chu kỳ trung bình lô — về thường nhất trước
+        <small>${periodLabel()}</small>
+      </div>
+      <div class="tbl-scroll">
+        <table class="tbl">
+          <thead><tr>
+            <th class="center">#</th>
+            <th class="center">Lô</th>
+            <th class="center">Đầu</th>
+            <th class="center">Đuôi</th>
+            <th class="center">Chu kỳ TB</th>
+            <th class="center">Số lần về</th>
+            <th>Tần suất</th>
+            <th>Lần cuối về</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`
+}
+
+// ── Ma trận lô ────────────────────────────────────────────────────────────
+function renderLoMatrix(data) {
+  const matrix  = data.matrix  || []
+  const summary = data.summary || {}
+  const parity  = data.parity  || 'all'
+
+  // Danh sách số cần hiển thị (theo parity)
+  const nums = []
+  for (let i = 0; i <= 99; i++) {
+    const lo = String(i).padStart(2, '0')
+    if (parity === 'even' && i % 2 !== 0) continue
+    if (parity === 'odd'  && i % 2 !== 1) continue
+    nums.push(lo)
+  }
+
+  // Max count trong summary để tính heatmap
+  const sumVals = nums.map(lo => summary[lo] || 0)
+  const maxSum  = Math.max(...sumVals, 1)
+  // Max count trong 1 ô đơn lẻ (cho heatmap ô)
+  let maxCell = 1
+  for (const row of matrix) {
+    for (const v of Object.values(row.counts || {})) if (v > maxCell) maxCell = v
+  }
+
+  function heatClass(val, max) {
+    if (!val) return 'm-heat-0'
+    const ratio = val / max
+    if (ratio >= .75) return 'm-heat-4'
+    if (ratio >= .5)  return 'm-heat-3'
+    if (ratio >= .25) return 'm-heat-2'
+    return 'm-heat-1'
+  }
+
+  // Header: số
+  const headCols = nums.map(lo => `<th class="m-num">${lo}</th>`).join('')
+
+  // Summary row (tổng)
+  const sumCells = nums.map(lo => {
+    const v   = summary[lo] || 0
+    const cls = heatClass(v, maxSum)
+    return `<td class="m-cell ${cls}">${v || ''}</td>`
+  }).join('')
+
+  // Các hàng ngày
+  const bodyRows = matrix.map(row => {
+    const cells = nums.map(lo => {
+      const v   = (row.counts || {})[lo] || 0
+      const cls = heatClass(v, maxCell)
+      const isDb = row.special === lo ? ' is-db' : ''
+      return `<td class="m-cell ${cls}${isDb}" title="${lo}${isDb ? ' (ĐB)' : ''}">${v || ''}</td>`
+    }).join('')
+    const d = row.date || ''
+    const dFmt = d.slice(5).replace('-', '/')  // MM/DD → hiển thị ngắn
+    return `<tr><td class="m-date">${d.slice(0, 10)}</td>${cells}</tr>`
+  }).join('')
+
+  const parityNote = parity !== 'all' ? ` · ${parity === 'even' ? 'Số chẵn' : 'Số lẻ'}` : ''
+  document.getElementById('main').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card-title">
+        Ma trận tần suất lô — mỗi hàng là 1 ngày quay
+        <small>${periodLabel()}${parityNote} · <span style="background:#e74c3c;color:#fff;padding:1px 6px;border-radius:3px;font-size:.75rem">Viền đỏ = G.ĐB</span></small>
+      </div>
+      <div style="padding:8px 12px;font-size:.8rem;color:#666;background:#fffde7;border-bottom:1px solid #eee">
+        Hàng <strong style="color:#856404">Tổng</strong> = tổng lần về cả khoảng · Ô đậm hơn = về nhiều hơn
+      </div>
+      <div class="matrix-outer">
+        <table class="matrix-tbl">
+          <thead>
+            <tr>
+              <th class="m-date">Ngày</th>
+              ${headCols}
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="m-summary">
+              <td class="m-date">Tổng</td>
+              ${sumCells}
+            </tr>
+            ${bodyRows}
+          </tbody>
+        </table>
+      </div>
+    </div>`
+}
+
+// ── Cặp lô ────────────────────────────────────────────────────────────────
+function renderCapLo(data) {
+  const list     = data.data || []
+  const maxCount = list[0]?.count || 1
+
+  const rows = list.map((r, i) => {
+    const pct = Math.round(r.count / maxCount * 100)
+    const [a, b] = r.pair
+    return `<tr>
+      <td class="rank-cell">${i + 1}</td>
+      <td style="padding:6px 12px">
+        <span class="pair-badge">
+          <span class="pair-num">${a}</span>
+          <span class="pair-sep">+</span>
+          <span class="pair-num">${b}</span>
+        </span>
+      </td>
+      <td class="center" style="font-weight:700;font-size:1rem">${r.count}</td>
+      <td>
+        <div class="bar-wrap" style="width:160px">
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+        </div>
+      </td>
+    </tr>`
+  }).join('')
+
+  document.getElementById('main').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card-title">
+        Tần suất cặp lô — 2 số hay về cùng ngày nhất
+        <small>${periodLabel()} · ${list.length} cặp</small>
+      </div>
+      <div style="padding:8px 12px;font-size:.8rem;color:#666;background:#f9f9f9;border-bottom:1px solid #eee">
+        Đếm số ngày quay mà cả 2 số đều xuất hiện trong bộ kết quả (không phân biệt giải)
+      </div>
+      <div class="tbl-scroll">
+        <table class="tbl">
+          <thead><tr>
+            <th class="center">#</th>
+            <th>Cặp số</th>
+            <th class="center">Số ngày cùng về</th>
+            <th>Tỷ lệ</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`
+}
+</script>
+
+</body>
+</html>

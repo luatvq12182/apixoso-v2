@@ -1,0 +1,205 @@
+/*
+ * KQXS Live — Skeleton CSS
+ * Chỉ định nghĩa cấu trúc và layout, không có màu sắc / font / shadow.
+ * Override trong style.css của theme theo ý muốn.
+ *
+ * ── Danh sách class ──────────────────────────────────────────────────────────
+ *
+ * Wrapper
+ *   .kqxs-live-wrap          — wrapper ngoài cùng
+ *
+ * Tab bar
+ *   .kqxs-tab-bar            — thanh tab chọn miền
+ *   .kqxs-tab                — nút tab
+ *   .kqxs-tab--active        — tab đang chọn
+ *   .kqxs-tab-time           — giờ quay (text nhỏ trong tab)
+ *
+ * Status bar
+ *   .kqxs-status-bar         — thanh trạng thái kết nối
+ *   .kqxs-dot                — chấm tròn trạng thái
+ *   .kqxs-dot[data-state="live"]  — đang nhận dữ liệu
+ *   .kqxs-dot[data-state="wait"]  — đang kết nối
+ *   .kqxs-dot[data-state="done"]  — hoàn thành
+ *   .kqxs-dot[data-state="off"]   — mất kết nối
+ *   .kqxs-status-label       — text trạng thái
+ *   .kqxs-last-update        — giờ cập nhật cuối
+ *
+ * Bảng kết quả gộp
+ *   .kqxs-grid               — vùng chứa bảng
+ *   .kqxs-table              — <table> kết quả
+ *   .kqxs-col-label          — cột "Giải" (th/td bên trái)
+ *   .kqxs-col-province       — cột tỉnh trong <thead>
+ *   .kqxs-province-name      — tên tỉnh trong header cột
+ *   .kqxs-status--pending    — badge "Chờ quay"
+ *   .kqxs-status--live       — badge "Đang quay"
+ *   .kqxs-status--done       — badge "Hoàn thành"
+ *   .kqxs-madb-row           — hàng Mã ĐB (chỉ MB)
+ *   .kqxs-madb-codes         — nội dung Mã ĐB
+ *   .kqxs-row                — hàng giải
+ *   .kqxs-row--special       — hàng G.ĐB
+ *   .kqxs-row--first … --eighth — hàng G.1 … G.8
+ *   .kqxs-prize-nums         — ô chứa các số
+ *
+ * Số
+ *   .kqxs-num                — 1 số kết quả
+ *   .kqxs-num--special       — số G.ĐB
+ *   .kqxs-num--first         — số G.1
+ *   .kqxs-num--second … --eighth
+ *   .kqxs-num--pending       — ô chờ dữ liệu ("...")
+ *
+ * Thông báo
+ *   .kqxs-message            — text khi chưa có data / lỗi
+ */
+
+/* ── Reset box-sizing ────────────────────────────────────────────────────── */
+
+.kqxs-live-wrap,
+.kqxs-live-wrap *,
+.kqxs-live-wrap *::before,
+.kqxs-live-wrap *::after {
+  box-sizing: border-box;
+}
+
+/* ── Tab bar ─────────────────────────────────────────────────────────────── */
+
+.kqxs-tab-bar {
+  display: flex;
+}
+
+.kqxs-tab {
+  flex: 1;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 10px 16px;
+  font-size: inherit;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.kqxs-tab-time {
+  display: block;
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+/* ── Status bar ──────────────────────────────────────────────────────────── */
+
+.kqxs-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  flex-wrap: wrap;
+}
+
+.kqxs-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.kqxs-last-update {
+  margin-left: auto;
+  font-size: 0.8em;
+}
+
+/* ── Grid (wrapper của bảng) ─────────────────────────────────────────────── */
+
+.kqxs-grid {
+  width: 100%;
+  overflow-x: auto;    /* cuộn ngang khi màn hình nhỏ */
+}
+
+/* ── Bảng gộp ────────────────────────────────────────────────────────────── */
+
+.kqxs-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+/* Cột "Giải" bên trái */
+.kqxs-col-label {
+  text-align: center;
+  white-space: nowrap;
+  font-weight: 700;
+  width: 52px;
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+
+/* Cột tỉnh trong thead */
+.kqxs-col-province {
+  text-align: center;
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+
+.kqxs-province-name {
+  display: block;
+  font-weight: 700;
+}
+
+.kqxs-status--pending,
+.kqxs-status--live,
+.kqxs-status--done {
+  display: inline-block;
+  font-size: 0.75em;
+  font-weight: 600;
+  padding: 2px 7px;
+  margin-top: 3px;
+}
+
+/* Hàng Mã ĐB (MB) */
+.kqxs-madb-row .kqxs-col-label {
+  font-size: 0.8em;
+}
+
+.kqxs-madb-codes {
+  text-align: center;
+  font-size: 0.82em;
+  padding: 4px 10px;
+}
+
+/* Các hàng dữ liệu */
+.kqxs-row td {
+  padding: 5px 8px;
+  vertical-align: middle;
+  border-bottom: 1px solid transparent;  /* ghi đè bằng border-color bạn muốn */
+}
+
+.kqxs-prize-nums {
+  text-align: center;
+}
+
+/* ── Số kết quả ──────────────────────────────────────────────────────────── */
+
+.kqxs-num {
+  display: inline-block;
+  margin: 2px 3px;
+  font-weight: 700;
+}
+
+.kqxs-num--special { font-size: 1.5em; }
+.kqxs-num--first   { font-size: 1.2em; }
+.kqxs-num--second,
+.kqxs-num--third   { font-size: 1.05em; }
+.kqxs-num--seventh,
+.kqxs-num--eighth  { font-size: 0.9em; }
+
+.kqxs-num--pending {
+  opacity: 0.3;
+  letter-spacing: 2px;
+}
+
+/* ── Thông báo ───────────────────────────────────────────────────────────── */
+
+.kqxs-message {
+  text-align: center;
+  padding: 40px 20px;
+  opacity: 0.6;
+}

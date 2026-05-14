@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KQXS Trực Tiếp</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #222; }
+
+    header {
+      background: #c0392b; color: #fff;
+      padding: 14px 24px; display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    header h1 { font-size: 1.25rem; }
+    header a { color: #ffc; text-decoration: none; font-size: .85rem; margin-left: auto; }
+    header a:hover { text-decoration: underline; }
+
+    .tab-bar {
+      background: #7f1414;
+      display: flex; gap: 0;
+    }
+    .tab {
+      padding: 10px 28px; color: #ffccc9; font-weight: 600; font-size: .95rem;
+      cursor: pointer; border-bottom: 3px solid transparent; transition: all .2s;
+    }
+    .tab:hover { background: rgba(255,255,255,.1); }
+    .tab.active { color: #fff; border-bottom-color: #fff; background: rgba(255,255,255,.15); }
+
+    .status-bar {
+      background: #fff; padding: 10px 20px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid #e0e0e0; font-size: .88rem;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot-live { background: #e74c3c; animation: blink 1s infinite; }
+    .dot-wait { background: #f39c12; }
+    .dot-done { background: #27ae60; }
+    .dot-off  { background: #bbb; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    main { padding: 20px 24px; }
+
+    .station-grid { display: flex; flex-wrap: wrap; gap: 16px; }
+
+    .station-card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      flex: 1 1 280px; overflow: hidden;
+    }
+
+    .card-header {
+      background: #c0392b; color: #fff;
+      padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-header .station-name { font-weight: 700; font-size: 1rem; }
+    .card-header .station-status {
+      font-size: .75rem; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+    }
+    .status-pending { background: #f39c12; }
+    .status-live    { background: #e74c3c; animation: blink 1s infinite; }
+    .status-done    { background: #27ae60; }
+
+    .special-codes {
+      padding: 6px 12px; background: #fff8e1;
+      font-size: .8rem; color: #795548; border-bottom: 1px solid #f0e0b0;
+      min-height: 28px;
+    }
+    .special-codes span { font-weight: 700; color: #1a6eb5; margin-right: 6px; }
+
+    table.prize-table { width: 100%; border-collapse: collapse; }
+    table.prize-table tr { border-bottom: 1px solid #f5f5f5; }
+    table.prize-table td { padding: 6px 10px; vertical-align: middle; }
+    table.prize-table td.lbl {
+      width: 48px; font-weight: 700; font-size: .8rem; color: #888; white-space: nowrap;
+    }
+    table.prize-table td.nums { text-align: center; }
+
+    .num { display: inline-block; margin: 2px 3px; font-weight: 700; }
+    .num-special { color: #e74c3c; font-size: 1.6rem; }
+    .num-first   { color: #e74c3c; font-size: 1.2rem; }
+    .num-normal  { color: #1a1a2e; font-size: 1rem; }
+    .num-small   { color: #555; font-size: .9rem; }
+    .num-pending { color: #ccc; font-size: 1.1rem; letter-spacing: 2px; }
+
+    .empty-msg { text-align: center; padding: 60px; color: #999; font-size: 1rem; }
+    .countdown { font-size: 1.4rem; font-weight: 700; color: #c0392b; }
+
+    .last-update { font-size: .8rem; color: #999; margin-left: auto; }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+  </svg>
+  <h1>KQXS Trực Tiếp</h1>
+  <a href="/">← Xem kết quả lưu trữ</a>
+</header>
+
+<div class="tab-bar">
+  <div class="tab" data-region="mn" onclick="switchRegion('mn')">Miền Nam <small>16:15</small></div>
+  <div class="tab" data-region="mt" onclick="switchRegion('mt')">Miền Trung <small>17:15</small></div>
+  <div class="tab" data-region="mb" onclick="switchRegion('mb')">Miền Bắc <small>18:15</small></div>
+</div>
+
+<div class="status-bar">
+  <span class="dot dot-off" id="connDot"></span>
+  <span id="connLabel">Chưa kết nối</span>
+  <span class="last-update" id="lastUpdate"></span>
+</div>
+
+<main id="main">
+  <div class="empty-msg">Chọn miền để xem kết quả trực tiếp</div>
+</main>
+
+<script>
+  const PRIZE_ORDER  = ['special','first','second','third','fourth','fifth','sixth','seventh','eighth']
+  const PRIZE_LABELS = { special:'G.ĐB', first:'G.1', second:'G.2', third:'G.3', fourth:'G.4', fifth:'G.5', sixth:'G.6', seventh:'G.7', eighth:'G.8' }
+
+  let currentRegion = null
+  let polling = false      // flag để dừng vòng lặp poll khi đổi miền
+  let lastTs = 0
+
+  // Tự động chọn miền đang trong giờ quay
+  function autoSelectRegion() {
+    const now = new Date()
+    const h = now.getHours(), m = now.getMinutes()
+    const mins = h * 60 + m
+    if      (mins >= 16*60+10 && mins <= 17*60) return 'mn'
+    else if (mins >= 17*60+10 && mins <= 18*60) return 'mt'
+    else if (mins >= 18*60+10 && mins <= 19*60) return 'mb'
+    // Ngoài giờ quay → chọn theo giờ gần nhất sắp tới
+    if (mins < 16*60+10) return 'mn'
+    if (mins < 17*60+10) return 'mt'
+    if (mins < 18*60+10) return 'mb'
+    return 'mb'
+  }
+
+  function setConnStatus(state) {
+    const dot = document.getElementById('connDot')
+    const lbl = document.getElementById('connLabel')
+    dot.className = 'dot'
+    if (state === 'live')    { dot.classList.add('dot-live'); lbl.textContent = 'Đang nhận dữ liệu trực tiếp' }
+    else if (state === 'wait') { dot.classList.add('dot-wait'); lbl.textContent = 'Đang kết nối...' }
+    else if (state === 'done') { dot.classList.add('dot-done'); lbl.textContent = 'Đã có kết quả đầy đủ' }
+    else                     { dot.classList.add('dot-off');  lbl.textContent = 'Mất kết nối' }
+  }
+
+  function numClass(key) {
+    if (key === 'special') return 'num-special'
+    if (key === 'first')   return 'num-first'
+    if (key === 'seventh' || key === 'eighth') return 'num-small'
+    return 'num-normal'
+  }
+
+  function renderNum(n, key) {
+    if (!n || n === '...') return `<span class="num num-pending">...</span>`
+    return `<span class="num ${numClass(key)}">${n}</span>`
+  }
+
+  function renderStation(station) {
+    const statusLabel = station.status === 1 ? ['done','Hoàn thành'] : station.status === 2 ? ['live','Đang quay'] : ['pending','Chờ quay']
+    const codesHtml = station.specialCodes?.length
+      ? station.specialCodes.map(c => `<span>${c}</span>`).join(' ')
+      : '<em style="color:#bbb">—</em>'
+
+    let rows = ''
+    PRIZE_ORDER.forEach(key => {
+      const label = PRIZE_LABELS[key]
+      if (!label) return
+      const nums = station.prizes?.[key]
+      let numsHtml = ''
+      if (!nums || !nums.length) {
+        numsHtml = `<span class="num num-pending">...</span>`
+      } else {
+        numsHtml = nums.map(n => renderNum(n, key)).join('')
+      }
+      rows += `<tr><td class="lbl">${label}</td><td class="nums">${numsHtml}</td></tr>`
+    })
+
+    return `<div class="station-card">
+      <div class="card-header">
+        <span class="station-name">${station.lotteryName || '—'}</span>
+        <span class="station-status status-${statusLabel[0]}">${statusLabel[1]}</span>
+      </div>
+      <div class="special-codes">Mã ĐB: ${codesHtml}</div>
+      <table class="prize-table"><tbody>${rows}</tbody></table>
+    </div>`
+  }
+
+  function render(payload) {
+    const main = document.getElementById('main')
+    if (!payload.ok) {
+      main.innerHTML = `<div class="empty-msg">Lỗi lấy dữ liệu: ${payload.error}</div>`
+      setConnStatus('off')
+      return
+    }
+
+    const stations = payload.stations || []
+    if (!stations.length) {
+      main.innerHTML = `<div class="empty-msg">Không có dữ liệu. Chưa đến giờ quay thưởng.</div>`
+      setConnStatus('wait')
+      return
+    }
+
+    const allDone = stations.every(s => s.status === 1)
+    const anyLive = stations.some(s => s.status === 2)
+    setConnStatus(allDone ? 'done' : anyLive ? 'live' : 'live')
+
+    const grid = stations.map(renderStation).join('')
+    main.innerHTML = `<div class="station-grid">${grid}</div>`
+
+    const t = new Date(payload.ts)
+    document.getElementById('lastUpdate').textContent =
+      `Cập nhật lúc ${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}:${t.getSeconds().toString().padStart(2,'0')}`
+  }
+
+  // Long polling loop — gọi API, nhận data, gọi lại ngay với since=ts mới
+  async function pollLoop(region) {
+    while (polling && currentRegion === region) {
+      try {
+        const url = `/api/live/${region}?since=${lastTs}`
+        const res = await fetch(url)
+        if (!polling || currentRegion !== region) break  // đổi miền rồi thì dừng
+
+        const data = await res.json()
+
+        if (data.timeout) continue   // server timeout, poll lại ngay
+
+        if (data.ok && data.stations?.length) {
+          lastTs = data.ts
+          render(data)
+        }
+      } catch (e) {
+        setConnStatus('off')
+        await new Promise(r => setTimeout(r, 3000))  // đợi 3s rồi thử lại
+      }
+    }
+  }
+
+  function switchRegion(region) {
+    if (currentRegion === region) return
+
+    polling = false           // dừng vòng lặp cũ
+    currentRegion = region
+    lastTs = 0
+
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+    document.querySelector(`[data-region="${region}"]`)?.classList.add('active')
+
+    document.getElementById('main').innerHTML = '<div class="empty-msg">Đang kết nối...</div>'
+    setConnStatus('wait')
+
+    polling = true
+    pollLoop(region)          // bắt đầu vòng lặp mới
+  }
+
+  // Auto-chọn miền phù hợp khi load trang
+  window.addEventListener('load', () => {
+    const auto = autoSelectRegion()
+    switchRegion(auto)
+  })
+</script>
+
+</body>
+</html>

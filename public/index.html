@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KQXS Viewer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f2f5;
+      color: #222;
+    }
+
+    header {
+      background: #c0392b;
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    header h1 { font-size: 1.3rem; letter-spacing: .5px; }
+
+    .toolbar {
+      background: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #ddd;
+      flex-wrap: wrap;
+    }
+    .toolbar label { font-weight: 600; font-size: .9rem; }
+    .toolbar input[type=date] {
+      padding: 7px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: .95rem;
+    }
+    .toolbar button {
+      padding: 7px 20px;
+      background: #c0392b;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: .95rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .toolbar button:hover { background: #a93226; }
+    #status {
+      margin-left: auto;
+      font-size: .85rem;
+      color: #666;
+    }
+
+    main { padding: 20px 24px; }
+
+    .region-block { margin-bottom: 28px; }
+
+    .region-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      background: #c0392b;
+      padding: 7px 14px;
+      border-radius: 6px 6px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .region-title .draw-time {
+      font-size: .8rem;
+      font-weight: 400;
+      opacity: .85;
+    }
+
+    .province-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      overflow: hidden;
+    }
+
+    .province-card {
+      flex: 1 1 260px;
+      border-right: 1px solid #e0e0e0;
+    }
+    .province-card:last-child { border-right: none; }
+
+    .province-name {
+      text-align: center;
+      font-weight: 700;
+      font-size: .9rem;
+      padding: 7px;
+      background: #fdf0ef;
+      border-bottom: 1px solid #e0e0e0;
+      color: #c0392b;
+    }
+
+    table.result-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+    table.result-table tr { border-bottom: 1px solid #f0f0f0; }
+    table.result-table tr:last-child { border-bottom: none; }
+    table.result-table td {
+      padding: 5px 8px;
+      vertical-align: middle;
+    }
+    table.result-table td.prize-label {
+      width: 52px;
+      font-weight: 600;
+      color: #555;
+      font-size: .8rem;
+      white-space: nowrap;
+    }
+    table.result-table td.prize-nums {
+      text-align: center;
+    }
+
+    .num { display: inline-block; margin: 2px 3px; font-weight: 700; }
+    .num-special { color: #e74c3c; font-size: 1.5rem; }
+    .num-first   { color: #e74c3c; font-size: 1.2rem; }
+    .num-normal  { color: #2c3e50; font-size: 1rem; }
+    .num-small   { color: #555;    font-size: .95rem; }
+    .num-code    { color: #1a6eb5; font-size: .82rem; font-weight: 600; }
+
+    .empty-msg {
+      text-align: center;
+      color: #999;
+      padding: 40px;
+      font-size: .95rem;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/>
+    <line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="16" x2="12" y2="16"/>
+  </svg>
+  <h1>KQXS Viewer — Kết Quả Xổ Số</h1>
+  <a href="/live.html" style="color:#ffc;text-decoration:none;margin-left:auto;font-size:.85rem">📡 Xem trực tiếp →</a>
+</header>
+
+<div class="toolbar">
+  <label for="datePicker">Ngày:</label>
+  <input type="date" id="datePicker" />
+  <button onclick="search()">Xem kết quả</button>
+  <span id="status"></span>
+</div>
+
+<main id="main">
+  <div class="loading">Chọn ngày và nhấn "Xem kết quả"</div>
+</main>
+
+<script>
+  const PRIZE_LABELS = {
+    specialCodes: 'Mã ĐB',
+    special:  'G.ĐB',
+    first:    'G.1',
+    second:   'G.2',
+    third:    'G.3',
+    fourth:   'G.4',
+    fifth:    'G.5',
+    sixth:    'G.6',
+    seventh:  'G.7',
+    eighth:   'G.8',
+  }
+
+  const PRIZE_ORDER = ['specialCodes','special','first','second','third','fourth','fifth','sixth','seventh','eighth']
+
+  const REGIONS = [
+    { code: 'MN', label: 'Miền Nam',   drawTime: '16:15' },
+    { code: 'MT', label: 'Miền Trung', drawTime: '17:15' },
+    { code: 'MB', label: 'Miền Bắc',   drawTime: '18:15' },
+  ]
+
+  // Set ngày mặc định là hôm nay
+  const today = new Date()
+  const yyyy = today.getFullYear()
+  const mm = String(today.getMonth() + 1).padStart(2, '0')
+  const dd = String(today.getDate()).padStart(2, '0')
+  document.getElementById('datePicker').value = `${yyyy}-${mm}-${dd}`
+
+  function numClass(key) {
+    if (key === 'special') return 'num-special'
+    if (key === 'first')   return 'num-first'
+    if (key === 'specialCodes') return 'num-code'
+    if (key === 'seventh' || key === 'eighth') return 'num-small'
+    return 'num-normal'
+  }
+
+  function renderPrizeRow(key, numbers) {
+    if (!numbers || !numbers.length) return ''
+    const label = PRIZE_LABELS[key] || key
+    const cls = numClass(key)
+    const numsHtml = numbers.map(n => `<span class="num ${cls}">${n}</span>`).join('')
+    return `<tr>
+      <td class="prize-label">${label}</td>
+      <td class="prize-nums">${numsHtml}</td>
+    </tr>`
+  }
+
+  function renderProvinceCard(result) {
+    const name = result.province?.name || '—'
+    let rows = ''
+    PRIZE_ORDER.forEach(key => {
+      const nums = result.prizes?.[key]
+      if (nums && nums.length) rows += renderPrizeRow(key, nums)
+    })
+    return `<div class="province-card">
+      <div class="province-name">${name}</div>
+      <table class="result-table"><tbody>${rows}</tbody></table>
+    </div>`
+  }
+
+  function renderRegionBlock(regionMeta, results) {
+    if (!results.length) return ''
+    const cards = results.map(renderProvinceCard).join('')
+    return `<div class="region-block">
+      <div class="region-title">
+        ${regionMeta.label}
+        <span class="draw-time">🕐 ${regionMeta.drawTime}</span>
+      </div>
+      <div class="province-grid">${cards}</div>
+    </div>`
+  }
+
+  async function search() {
+    const date = document.getElementById('datePicker').value
+    if (!date) return
+
+    const main = document.getElementById('main')
+    const status = document.getElementById('status')
+    main.innerHTML = '<div class="loading">Đang tải...</div>'
+    status.textContent = ''
+
+    try {
+      const res = await fetch(`/api/results?date=${date}&limit=100`)
+      const json = await res.json()
+
+      if (!json.success || !json.data.length) {
+        main.innerHTML = `<div class="empty-msg">Không có kết quả cho ngày ${date}.<br>Hãy chạy <code>npm run crawl</code> để cào dữ liệu.</div>`
+        return
+      }
+
+      // Nhóm theo region
+      const byRegion = {}
+      json.data.forEach(r => {
+        const code = r.region?.code
+        if (!byRegion[code]) byRegion[code] = []
+        byRegion[code].push(r)
+      })
+
+      let html = ''
+      REGIONS.forEach(meta => {
+        const results = byRegion[meta.code] || []
+        html += renderRegionBlock(meta, results)
+      })
+
+      main.innerHTML = html || '<div class="empty-msg">Không có dữ liệu.</div>'
+      status.textContent = `${json.data.length} kết quả`
+    } catch (e) {
+      main.innerHTML = `<div class="empty-msg">Lỗi: ${e.message}</div>`
+    }
+  }
+</script>
+
+</body>
+</html>

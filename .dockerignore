@@ -1,0 +1,10 @@
+node_modules
+.env
+.env.*
+*.log
+npm-debug.log*
+.git
+.gitignore
+wordpress-plugin
+KQXS-API.postman_collection.json
+API.md

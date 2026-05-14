@@ -1,0 +1,50 @@
+services:
+
+  # ── MongoDB ───────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: kqxs-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-kqxs}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-changeme}
+      MONGO_INITDB_DATABASE: kqxs
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - kqxs-net
+    # Không expose ra ngoài — chỉ app nội bộ mới truy cập được
+    expose:
+      - "27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── API Server ────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kqxs-api
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3083
+      MONGO_URI: mongodb://${MONGO_USER:-kqxs}:${MONGO_PASS:-changeme}@mongo:27017/kqxs?authSource=admin
+    ports:
+      - "${HOST_PORT:-3083}:3083"
+    networks:
+      - kqxs-net
+
+volumes:
+  mongo_data:
+
+networks:
+  kqxs-net:
+    driver: bridge

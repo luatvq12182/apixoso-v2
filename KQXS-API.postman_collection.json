@@ -1,0 +1,523 @@
+{
+  "info": {
+    "name": "KQXS API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3083/api" },
+    { "key": "region_id", "value": "" },
+    { "key": "province_id", "value": "" },
+    { "key": "result_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Regions",
+      "item": [
+        {
+          "name": "GET all regions",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/regions", "host": ["{{base_url}}"], "path": ["regions"] }
+          }
+        },
+        {
+          "name": "GET one region",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/regions/{{region_id}}", "host": ["{{base_url}}"], "path": ["regions", "{{region_id}}"] }
+          }
+        },
+        {
+          "name": "POST create region",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/regions", "host": ["{{base_url}}"], "path": ["regions"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"MB\",\n  \"name\": \"Miền Bắc\",\n  \"drawTime\": \"18:15\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT update region",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/regions/{{region_id}}", "host": ["{{base_url}}"], "path": ["regions", "{{region_id}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Miền Bắc (updated)\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE region",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/regions/{{region_id}}", "host": ["{{base_url}}"], "path": ["regions", "{{region_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Provinces",
+      "item": [
+        {
+          "name": "GET all provinces",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/provinces",
+              "host": ["{{base_url}}"],
+              "path": ["provinces"]
+            }
+          }
+        },
+        {
+          "name": "GET provinces by region (alias)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/provinces?region=south",
+              "host": ["{{base_url}}"],
+              "path": ["provinces"],
+              "query": [{ "key": "region", "value": "south", "description": "south | north | center | mn | mt | mb | <ObjectId>" }]
+            }
+          }
+        },
+        {
+          "name": "GET provinces by region + day",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/provinces?region=south&day=2",
+              "host": ["{{base_url}}"],
+              "path": ["provinces"],
+              "query": [
+                { "key": "region", "value": "south" },
+                { "key": "day", "value": "2", "description": "1=Thứ 2 ... 7=Chủ nhật" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET one province",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/provinces/{{province_id}}", "host": ["{{base_url}}"], "path": ["provinces", "{{province_id}}"] }
+          }
+        },
+        {
+          "name": "POST create province",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/provinces", "host": ["{{base_url}}"], "path": ["provinces"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"XSHCM\",\n  \"name\": \"TP. Hồ Chí Minh\",\n  \"region\": \"{{region_id}}\",\n  \"schedule\": [2, 4, 6]\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT update province",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/provinces/{{province_id}}", "host": ["{{base_url}}"], "path": ["provinces", "{{province_id}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedule\": [2, 4, 6, 7]\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE province",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/provinces/{{province_id}}", "host": ["{{base_url}}"], "path": ["provinces", "{{province_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lottery Results",
+      "item": [
+        {
+          "name": "GET all results (today)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/results", "host": ["{{base_url}}"], "path": ["results"] }
+          }
+        },
+        {
+          "name": "GET results by date",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/results?date=2026-04-27",
+              "host": ["{{base_url}}"],
+              "path": ["results"],
+              "query": [{ "key": "date", "value": "2026-04-27" }]
+            }
+          }
+        },
+        {
+          "name": "GET results by date + region",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/results?date=2026-04-27&region=south",
+              "host": ["{{base_url}}"],
+              "path": ["results"],
+              "query": [
+                { "key": "date", "value": "2026-04-27" },
+                { "key": "region", "value": "south", "description": "south | north | center | mn | mt | mb" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET results by date + province (code)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/results?date=2026-04-27&province=XSHCM",
+              "host": ["{{base_url}}"],
+              "path": ["results"],
+              "query": [
+                { "key": "date", "value": "2026-04-27" },
+                { "key": "province", "value": "XSHCM" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET results with date range",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/results?from=2026-04-01&to=2026-04-27&region=mb",
+              "host": ["{{base_url}}"],
+              "path": ["results"],
+              "query": [
+                { "key": "from", "value": "2026-04-01" },
+                { "key": "to",   "value": "2026-04-27" },
+                { "key": "region", "value": "mb" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET one result",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/results/{{result_id}}", "host": ["{{base_url}}"], "path": ["results", "{{result_id}}"] }
+          }
+        },
+        {
+          "name": "POST create result",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/results", "host": ["{{base_url}}"], "path": ["results"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-04-27\",\n  \"province\": \"{{province_id}}\",\n  \"region\": \"{{region_id}}\",\n  \"prizes\": {\n    \"specialCodes\": [\"10ZU\"],\n    \"special\": [\"12345\"],\n    \"first\":   [\"67890\"],\n    \"second\":  [\"11111\", \"22222\"],\n    \"third\":   [\"33333\", \"44444\", \"55555\", \"66666\", \"77777\", \"88888\"],\n    \"fourth\":  [\"9999\", \"8888\", \"7777\", \"6666\"],\n    \"fifth\":   [\"5555\", \"4444\", \"3333\", \"2222\", \"1111\", \"0000\"],\n    \"sixth\":   [\"999\", \"888\", \"777\"],\n    \"seventh\": [\"99\", \"88\", \"77\", \"66\"]\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT update result",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/results/{{result_id}}", "host": ["{{base_url}}"], "path": ["results", "{{result_id}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prizes\": {\n    \"special\": [\"99999\"]\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE result",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/results/{{result_id}}", "host": ["{{base_url}}"], "path": ["results", "{{result_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Crawl",
+      "item": [
+        {
+          "name": "POST crawl - tất cả miền 1 ngày",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/crawl", "host": ["{{base_url}}"], "path": ["crawl"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-04-27\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST crawl - theo miền",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/crawl", "host": ["{{base_url}}"], "path": ["crawl"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-04-27\",\n  \"region\": \"south\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST crawl - theo tỉnh",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/crawl", "host": ["{{base_url}}"], "path": ["crawl"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-04-27\",\n  \"province\": \"XSHCM\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST crawl - miền bắc",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/crawl", "host": ["{{base_url}}"], "path": ["crawl"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-04-27\",\n  \"region\": \"north\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Statistics",
+      "item": [
+        {
+          "name": "GET lô tần suất - MB 30 ngày",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/lo-tan-suat?region=mb&days=30",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "lo-tan-suat"],
+              "query": [
+                { "key": "region", "value": "mb" },
+                { "key": "days",   "value": "30" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET lô tần suất - theo tỉnh",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/lo-tan-suat?province=XSHCM&days=60",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "lo-tan-suat"],
+              "query": [
+                { "key": "province", "value": "XSHCM" },
+                { "key": "days",     "value": "60" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET lô gan - MB",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/lo-gan?region=mb",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "lo-gan"],
+              "query": [{ "key": "region", "value": "mb" }]
+            }
+          }
+        },
+        {
+          "name": "GET lô gan - miền Nam",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/lo-gan?region=south&days=180",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "lo-gan"],
+              "query": [
+                { "key": "region", "value": "south" },
+                { "key": "days",   "value": "180" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET đề tần suất - MB 30 ngày",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/de-tan-suat?region=mb&days=30",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "de-tan-suat"],
+              "query": [
+                { "key": "region", "value": "mb" },
+                { "key": "days",   "value": "30" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET đề tần suất - tỉnh XSHCM",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/de-tan-suat?province=XSHCM&days=90",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "de-tan-suat"],
+              "query": [
+                { "key": "province", "value": "XSHCM" },
+                { "key": "days",     "value": "90" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET đề gan - MB",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/de-gan?region=mb",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "de-gan"],
+              "query": [{ "key": "region", "value": "mb" }]
+            }
+          }
+        },
+        {
+          "name": "GET đề gan - miền Nam",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/de-gan?region=south",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "de-gan"],
+              "query": [{ "key": "region", "value": "south" }]
+            }
+          }
+        },
+        {
+          "name": "GET đầu đuôi - MB 30 ngày",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/dau-duoi?region=mb&days=30",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "dau-duoi"],
+              "query": [
+                { "key": "region", "value": "mb" },
+                { "key": "days",   "value": "30" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET đầu đuôi - miền Nam 60 ngày",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/dau-duoi?region=south&days=60",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "dau-duoi"],
+              "query": [
+                { "key": "region", "value": "south" },
+                { "key": "days",   "value": "60" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET chu kỳ - MB 90 ngày",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/chu-ky?region=mb&days=90",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "chu-ky"],
+              "query": [
+                { "key": "region", "value": "mb" },
+                { "key": "days",   "value": "90" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET chu kỳ - tỉnh XSHCM",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stats/chu-ky?province=XSHCM&days=180",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "chu-ky"],
+              "query": [
+                { "key": "province", "value": "XSHCM" },
+                { "key": "days",     "value": "180" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Live",
+      "item": [
+        {
+          "name": "GET live - miền Nam",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/live/mn?since=0",
+              "host": ["{{base_url}}"],
+              "path": ["live", "mn"],
+              "query": [{ "key": "since", "value": "0", "description": "Unix timestamp ms — 0 = lấy ngay" }]
+            }
+          }
+        },
+        {
+          "name": "GET live - miền Trung",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/live/mt?since=0",
+              "host": ["{{base_url}}"],
+              "path": ["live", "mt"],
+              "query": [{ "key": "since", "value": "0" }]
+            }
+          }
+        },
+        {
+          "name": "GET live - miền Bắc",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/live/mb?since=0",
+              "host": ["{{base_url}}"],
+              "path": ["live", "mb"],
+              "query": [{ "key": "since", "value": "0" }]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
