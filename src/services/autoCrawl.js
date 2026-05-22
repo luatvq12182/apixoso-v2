@@ -53,34 +53,62 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 
+const MAX_ATTEMPTS   = 3
+const RETRY_DELAY_MS = 10 * 60 * 1000   // 10 phút giữa các lần retry
+
 /**
  * Gọi khi phát hiện toàn bộ đài của 1 miền đã hoàn thành quay.
- * Tự động bỏ qua nếu đã crawl miền đó trong ngày hôm nay.
+ * Tự động retry tối đa MAX_ATTEMPTS lần nếu crawl thất bại.
  */
-async function triggerCrawl(region) {
+async function triggerCrawl(region, attempt = 1) {
   const code = REGION_CODE[region]
   if (!code) return
 
   const key = code + '_' + todayStr()
-  if (crawledLog[key]) return   // đã crawl rồi
+  if (crawledLog[key]) return   // đã crawl thành công rồi
 
-  crawledLog[key] = true   // đánh dấu ngay, tránh trigger song song
+  crawledLog[key] = true   // khóa để tránh chạy song song
 
-  console.log(`[AutoCrawl] ${code} hoàn thành → bắt đầu crawl ngày ${todayStr()}`)
+  console.log(`[AutoCrawl] ${code} → crawl ngày ${todayStr()} (lần ${attempt}/${MAX_ATTEMPTS})`)
 
   try {
     const { regionMap, provinceByCode } = await getDbMaps()
     const result = await crawlRegion(todayUTC(), code, regionMap, provinceByCode, null)
+
+    const hasCrawled = result.crawled.length > 0
+    const hasSkipped = result.skipped.length > 0
+    const hasErrors  = result.errors.length  > 0
+
     const summary = [
-      result.crawled.length  ? `✓ ${result.crawled.join(', ')}` : '',
-      result.skipped.length  ? `⊘ skip: ${result.skipped.join(', ')}` : '',
-      result.errors.length   ? `✗ lỗi: ${result.errors.join(' | ')}` : '',
+      hasCrawled ? `✓ ${result.crawled.join(', ')}` : '',
+      hasSkipped ? `⊘ skip: ${result.skipped.join(', ')}` : '',
+      hasErrors  ? `✗ lỗi: ${result.errors.join(' | ')}` : '',
     ].filter(Boolean).join('  ')
-    console.log(`[AutoCrawl] ${code} xong — ${summary || 'không có gì mới'}`)
+    console.log(`[AutoCrawl] ${code} — ${summary || 'không có gì mới'}`)
+
+    // Chỉ thực sự lỗi khi không crawl, không skip (tức chưa có data), mà lại có errors
+    const failed = hasErrors && !hasCrawled && !hasSkipped
+    if (failed) {
+      delete crawledLog[key]   // mở khóa để retry được
+      scheduleRetry(region, attempt)
+    }
   } catch (e) {
-    console.error(`[AutoCrawl] ${code} lỗi:`, e.message)
-    delete crawledLog[key]   // cho phép retry lần sau
+    // Exception không mong đợi
+    console.error(`[AutoCrawl] ${code} exception:`, e.message)
+    delete crawledLog[key]
+    scheduleRetry(region, attempt)
   }
+}
+
+function scheduleRetry(region, attempt) {
+  const code = REGION_CODE[region] || region.toUpperCase()
+  if (attempt >= MAX_ATTEMPTS) {
+    console.error(`[AutoCrawl] ${code} đã thử ${MAX_ATTEMPTS} lần, bỏ qua ngày ${todayStr()}`)
+    return
+  }
+  const delay = RETRY_DELAY_MS * attempt
+  console.log(`[AutoCrawl] ${code} retry lần ${attempt + 1} sau ${Math.round(delay / 60000)} phút`)
+  setTimeout(() => triggerCrawl(region, attempt + 1), delay)
 }
 
 /**

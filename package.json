@@ -7,7 +7,10 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node src/scripts/seed.js",
-    "crawl": "node src/scripts/crawl.js"
+    "crawl": "node src/scripts/crawl.js",
+    "crawl:history": "node src/scripts/crawl-history.js",
+    "seed:push": "node src/scripts/seed-push.js",
+    "crawl:push": "node src/scripts/crawl-push.js"
   },
   "keywords": [],
   "author": "",
