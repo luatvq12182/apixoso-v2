@@ -78,16 +78,19 @@ async function triggerCrawl(region, attempt = 1) {
     const hasCrawled = result.crawled.length > 0
     const hasSkipped = result.skipped.length > 0
     const hasErrors  = result.errors.length  > 0
+    const hasPartial = (result.partial?.length ?? 0) > 0
 
     const summary = [
       hasCrawled ? `✓ ${result.crawled.join(', ')}` : '',
       hasSkipped ? `⊘ skip: ${result.skipped.join(', ')}` : '',
+      hasPartial ? `↺ partial: ${result.partial.join(', ')}` : '',
       hasErrors  ? `✗ lỗi: ${result.errors.join(' | ')}` : '',
     ].filter(Boolean).join('  ')
     console.log(`[AutoCrawl] ${code} — ${summary || 'không có gì mới'}`)
 
-    // Chỉ thực sự lỗi khi không crawl, không skip (tức chưa có data), mà lại có errors
-    const failed = hasErrors && !hasCrawled && !hasSkipped
+    // Retry khi: toàn lỗi (chưa có data) HOẶC có record partial bị xóa+crawl lại
+    // (partial = crawl lúc chưa quay xong → cần crawl lại sau vài phút)
+    const failed = (hasErrors && !hasCrawled && !hasSkipped) || hasPartial
     if (failed) {
       delete crawledLog[key]   // mở khóa để retry được
       scheduleRetry(region, attempt)

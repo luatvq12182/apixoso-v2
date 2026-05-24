@@ -123,7 +123,7 @@ function parseMNMT(html) {
  * @returns {{ crawled: string[], skipped: string[], errors: string[] }}
  */
 async function crawlRegion(date, regionCode, regionMap, provinceByCode, filterProvinceCodes) {
-  const out = { crawled: [], skipped: [], errors: [] }
+  const out = { crawled: [], skipped: [], errors: [], partial: [] }
   const url = `${BASE_URL}/${REGION_URL[regionCode]}-${toUrlDate(date)}.html`
 
   let html
@@ -140,13 +140,15 @@ async function crawlRegion(date, regionCode, regionMap, provinceByCode, filterPr
     const province = provinceByCode['XSMB']
     if (!province) { out.errors.push('Không tìm thấy XSMB trong DB'); return out }
 
-    if (filterProvinceCodes && !filterProvinceCodes.includes('XSMB')) {
-      // Tỉnh này không trong filter
-      return out
-    }
+    if (filterProvinceCodes && !filterProvinceCodes.includes('XSMB')) return out
 
-    const exists = await LotteryResult.exists({ date, province: province._id })
-    if (exists) { out.skipped.push('XSMB'); return out }
+    const existing = await LotteryResult.findOne({ date, province: province._id }).select('prizes.special').lean()
+    if (existing) {
+      if (existing.prizes?.special?.length > 0) { out.skipped.push('XSMB'); return out }
+      // Record thiếu giải ĐB (crawl lúc chưa quay xong) → xóa để crawl lại
+      await LotteryResult.deleteOne({ _id: existing._id })
+      out.partial.push('XSMB')
+    }
 
     const prizes = parseMB(html)
     if (!Object.keys(prizes).length) { out.errors.push('XSMB: không parse được dữ liệu'); return out }
@@ -164,8 +166,13 @@ async function crawlRegion(date, regionCode, regionMap, provinceByCode, filterPr
       const province = provinceByCode[code]
       if (!province || !Object.keys(prizes).length) continue
 
-      const exists = await LotteryResult.exists({ date, province: province._id })
-      if (exists) { out.skipped.push(code); continue }
+      const existing = await LotteryResult.findOne({ date, province: province._id }).select('prizes.special').lean()
+      if (existing) {
+        if (existing.prizes?.special?.length > 0) { out.skipped.push(code); continue }
+        // Record thiếu giải ĐB → xóa để crawl lại
+        await LotteryResult.deleteOne({ _id: existing._id })
+        out.partial.push(code)
+      }
 
       await LotteryResult.create({ date, province: province._id, region: region._id, prizes })
       out.crawled.push(code)
