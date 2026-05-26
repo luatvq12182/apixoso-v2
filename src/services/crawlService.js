@@ -142,19 +142,20 @@ async function crawlRegion(date, regionCode, regionMap, provinceByCode, filterPr
 
     if (filterProvinceCodes && !filterProvinceCodes.includes('XSMB')) return out
 
-    const existing = await LotteryResult.findOne({ date, province: province._id }).select('prizes.special').lean()
-    if (existing) {
-      if (existing.prizes?.special?.length > 0) { out.skipped.push('XSMB'); return out }
-      // Record thiếu giải ĐB (crawl lúc chưa quay xong) → xóa để crawl lại
-      await LotteryResult.deleteOne({ _id: existing._id })
-      out.partial.push('XSMB')
-    }
-
     const prizes = parseMB(html)
     if (!Object.keys(prizes).length) { out.errors.push('XSMB: không parse được dữ liệu'); return out }
 
-    await LotteryResult.create({ date, province: province._id, region: region._id, prizes })
-    out.crawled.push('XSMB')
+    const existing = await LotteryResult.findOne({ date, province: province._id }).select('prizes.special').lean()
+    if (existing) {
+      if (existing.prizes?.special?.length > 0) { out.skipped.push('XSMB'); return out }
+      if (!prizes.special?.length) { out.partial.push('XSMB'); return out }   // source chưa có G.ĐB → retry sau
+      await LotteryResult.updateOne({ _id: existing._id }, { $set: { prizes } })
+      out.crawled.push('XSMB')
+    } else {
+      if (!prizes.special?.length) { out.partial.push('XSMB'); return out }   // source chưa có G.ĐB → retry sau
+      await LotteryResult.create({ date, province: province._id, region: region._id, prizes })
+      out.crawled.push('XSMB')
+    }
 
   } else {
     const resultsByProvince = parseMNMT(html)
@@ -169,13 +170,14 @@ async function crawlRegion(date, regionCode, regionMap, provinceByCode, filterPr
       const existing = await LotteryResult.findOne({ date, province: province._id }).select('prizes.special').lean()
       if (existing) {
         if (existing.prizes?.special?.length > 0) { out.skipped.push(code); continue }
-        // Record thiếu giải ĐB → xóa để crawl lại
-        await LotteryResult.deleteOne({ _id: existing._id })
-        out.partial.push(code)
+        if (!prizes.special?.length) { out.partial.push(code); continue }   // source chưa có G.ĐB → retry sau
+        await LotteryResult.updateOne({ _id: existing._id }, { $set: { prizes } })
+        out.crawled.push(code)
+      } else {
+        if (!prizes.special?.length) { out.partial.push(code); continue }   // source chưa có G.ĐB → retry sau
+        await LotteryResult.create({ date, province: province._id, region: region._id, prizes })
+        out.crawled.push(code)
       }
-
-      await LotteryResult.create({ date, province: province._id, region: region._id, prizes })
-      out.crawled.push(code)
     }
   }
 

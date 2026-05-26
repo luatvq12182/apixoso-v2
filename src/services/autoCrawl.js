@@ -53,8 +53,8 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 
-const MAX_ATTEMPTS   = 3
-const RETRY_DELAY_MS = 10 * 60 * 1000   // 10 phút giữa các lần retry
+const MAX_ATTEMPTS   = 9
+const RETRY_DELAY_MS = 5 * 60 * 1000    // 5 phút mỗi lần retry (9 lần = 45 phút cover đến ~17:50 VN)
 
 /**
  * Gọi khi phát hiện toàn bộ đài của 1 miền đã hoàn thành quay.
@@ -109,9 +109,8 @@ function scheduleRetry(region, attempt) {
     console.error(`[AutoCrawl] ${code} đã thử ${MAX_ATTEMPTS} lần, bỏ qua ngày ${todayStr()}`)
     return
   }
-  const delay = RETRY_DELAY_MS * attempt
-  console.log(`[AutoCrawl] ${code} retry lần ${attempt + 1} sau ${Math.round(delay / 60000)} phút`)
-  setTimeout(() => triggerCrawl(region, attempt + 1), delay)
+  console.log(`[AutoCrawl] ${code} retry lần ${attempt + 1} sau 5 phút`)
+  setTimeout(() => triggerCrawl(region, attempt + 1), RETRY_DELAY_MS)
 }
 
 /**
