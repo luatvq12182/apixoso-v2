@@ -486,6 +486,23 @@ exports.quickStats = asyncHandler(async (req, res) => {
   // ── Đầu số ──────────────────────────────────────────────────────────────
   const dau = dauFreq.map((count, i) => ({ dau: String(i), count }))
 
+  // ── Lô liên tiếp ─────────────────────────────────────────────────────────
+  // Chỉ tính lô đang ra trong kỳ gần nhất và liên tiếp ít nhất 2 kỳ
+  const recentSet = byDate[sortedDates[0]]?.loSet || new Set()
+  const loLienTiep = []
+  for (let i = 0; i <= 99; i++) {
+    const lo = String(i).padStart(2, '0')
+    if (!recentSet.has(lo)) continue   // không có ở kỳ gần nhất → streak = 0
+    let streak = 1
+    for (let j = 1; j < sortedDates.length; j++) {
+      if (byDate[sortedDates[j]]?.loSet.has(lo)) streak++
+      else break
+    }
+    if (streak >= 2) loLienTiep.push({ lo, streak })
+  }
+  loLienTiep.sort((a, b) => b.streak - a.streak || a.lo.localeCompare(b.lo))
+  const loLienTiepTop = loLienTiep.slice(0, top)
+
   // ── Summary ──────────────────────────────────────────────────────────────
   const topLo  = Object.entries(loFreq).sort((a, b) => b[1] - a[1])[0]
   const topGan = loGanAll[0]
@@ -500,8 +517,9 @@ exports.quickStats = asyncHandler(async (req, res) => {
       loGanDai:    topGan ? { lo: topGan.lo, gan:   topGan.gan, lastDate: topGan.lastDate } : null,
       dauDanDau:   topDau ? { dau: topDau.dau, count: topDau.count } : null,
     },
-    loNong,   // top N lô về nhiều nhất + trend count
-    loGan,    // top N lô gan dài nhất (theo kỳ)
-    dau,      // tần suất đầu số 0–9
+    loNong,        // top N lô về nhiều nhất + trend count
+    loGan,         // top N lô gan dài nhất (theo kỳ)
+    loLienTiep: loLienTiepTop,  // top N lô đang ra liên tiếp (streak >= 2 kỳ gần nhất)
+    dau,           // tần suất đầu số 0–9
   })
 })
