@@ -523,3 +523,140 @@ exports.quickStats = asyncHandler(async (req, res) => {
     dau,           // tần suất đầu số 0–9
   })
 })
+
+// ─── 10. Quick stats đề ──────────────────────────────────────────────────────
+// GET /api/stats/quick-de?region=mb&days=30
+// 1. deHomNay  — đề kỳ gần nhất + đầu/đuôi/tổng của nó
+// 2. gan       — top 3 đầu gan / đuôi gan / tổng gan (tính ngày)
+// 3. deNong    — top 5 đề về nhiều nhất trong N ngày
+// 4. namXua    — đề về đúng ngày này ở 3–5 năm trước
+
+exports.quickDe = asyncHandler(async (req, res) => {
+  const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 90)
+
+  // Query 1: 365 ngày — đủ để tính gan chính xác
+  const { match: match365, endDate } = buildFilter(req.query, 365)
+
+  const results = await LotteryResult.find(match365)
+    .select('prizes date province')
+    .sort({ date: -1 })
+    .lean()
+
+  // ── Section 1: Đề kỳ mới nhất ────────────────────────────────────────────
+  // Gom tất cả tỉnh của ngày gần nhất có G.ĐB
+  let latestDate = null
+  for (const r of results) {
+    if (extractDe(r)) { latestDate = fmtDate(r.date); break }
+  }
+
+  let deHomNay = null
+  if (latestDate) {
+    const Province = require('../models/Province')
+    const recs = results.filter(r => fmtDate(r.date) === latestDate && extractDe(r))
+    const deItems = await Promise.all(recs.map(async r => {
+      const de   = extractDe(r)
+      const d1   = parseInt(de[0])
+      const d2   = parseInt(de[1])
+      const prov = await Province.findById(r.province).select('name code').lean()
+      return { de, dau: de[0], duoi: de[1], tong: d1 + d2, province: prov?.name || prov?.code || null }
+    }))
+    deHomNay = { date: latestDate, results: deItems }
+  }
+
+  // ── Section 2: Gan đầu / đuôi / tổng ────────────────────────────────────
+  const dauLastSeen  = {}
+  const duoiLastSeen = {}
+  const tongLastSeen = {}
+
+  for (const r of results) {
+    const de = extractDe(r)
+    if (!de) continue
+    const d    = fmtDate(r.date)
+    const dau  = de[0]
+    const duoi = de[1]
+    const tong = String(parseInt(de[0]) + parseInt(de[1]))
+    if (!dauLastSeen[dau])   dauLastSeen[dau]   = d
+    if (!duoiLastSeen[duoi]) duoiLastSeen[duoi] = d
+    if (!tongLastSeen[tong]) tongLastSeen[tong] = d
+  }
+
+  const today    = fmtDate(endDate)
+  const msPerDay = 86400000
+
+  const topGan = (lastSeen, keys, field) =>
+    keys
+      .map(k => ({
+        [field]: k,
+        gan:      lastSeen[k] ? Math.floor((new Date(today) - new Date(lastSeen[k])) / msPerDay) : null,
+        lastDate: lastSeen[k] || null,
+      }))
+      .sort((a, b) => (b.gan ?? -1) - (a.gan ?? -1))
+      .slice(0, 3)
+
+  const gan = {
+    dau:  topGan(dauLastSeen,  Array.from({ length: 10 }, (_, i) => String(i)),        'dau'),
+    duoi: topGan(duoiLastSeen, Array.from({ length: 10 }, (_, i) => String(i)),        'duoi'),
+    tong: topGan(tongLastSeen, Array.from({ length: 19 }, (_, i) => String(i)),        'tong'),
+  }
+
+  // ── Section 3: Đề nóng trong N ngày ─────────────────────────────────────
+  const daysStart    = new Date(endDate)
+  daysStart.setUTCDate(endDate.getUTCDate() - days + 1)
+  const daysStartStr = fmtDate(daysStart)
+
+  const deFreq = {}
+  for (const r of results) {
+    if (fmtDate(r.date) < daysStartStr) continue
+    const de = extractDe(r)
+    if (de) deFreq[de] = (deFreq[de] || 0) + 1
+  }
+
+  const deNong = {
+    days,
+    data: Object.entries(deFreq)
+      .map(([de, count]) => ({ de, dau: de[0], duoi: de[1], count }))
+      .sort((a, b) => b.count - a.count || a.de.localeCompare(b.de))
+      .slice(0, 5),
+  }
+
+  // ── Section 4: Ngày này năm xưa ─────────────────────────────────────────
+  // Query 2: chỉ lấy 5 ngày cụ thể
+  const todayVN  = new Date(Date.now() + 7 * 60 * 60 * 1000)
+  const histDates = Array.from({ length: 5 }, (_, i) =>
+    new Date(Date.UTC(todayVN.getUTCFullYear() - (i + 1), todayVN.getUTCMonth(), todayVN.getUTCDate()))
+  )
+
+  const histMatch      = { ...match365, date: { $in: histDates } }
+  const histResults    = await LotteryResult.find(histMatch)
+    .select('prizes date province')
+    .lean()
+
+  const Province       = require('../models/Province')
+  const provinceIds    = [...new Set(histResults.map(r => String(r.province)))]
+  const provinceDocs   = await Province.find({ _id: { $in: provinceIds } }).select('name code').lean()
+  const provMap        = Object.fromEntries(provinceDocs.map(p => [String(p._id), p]))
+
+  const namXua = histDates
+    .map(d => {
+      const dateStr = fmtDate(d)
+      const des = histResults
+        .filter(r => fmtDate(r.date) === dateStr)
+        .map(r => {
+          const de = extractDe(r)
+          if (!de) return null
+          const prov = provMap[String(r.province)]
+          return { de, province: prov?.name || prov?.code || null }
+        })
+        .filter(Boolean)
+      return des.length ? { date: dateStr, year: d.getUTCFullYear(), des } : null
+    })
+    .filter(Boolean)
+
+  res.json({
+    success: true,
+    deHomNay,
+    gan,
+    deNong,
+    namXua,
+  })
+})

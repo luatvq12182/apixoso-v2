@@ -34,4 +34,8 @@ router.get('/cap-lo', resolveRegion, c.capLo)
 // Trả về toàn bộ dữ liệu UI thống kê nhanh trong 1 request
 router.get('/quick', resolveRegion, c.quickStats)
 
+// GET /api/stats/quick-de?region=mb&days=30
+// Thống kê đề nhanh: đề mới nhất, gan đầu/đuôi/tổng, đề nóng, ngày này năm xưa
+router.get('/quick-de', resolveRegion, c.quickDe)
+
 module.exports = router
