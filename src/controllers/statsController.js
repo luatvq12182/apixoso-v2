@@ -574,7 +574,7 @@ exports.quickDe = asyncHandler(async (req, res) => {
     const d    = fmtDate(r.date)
     const dau  = de[0]
     const duoi = de[1]
-    const tong = String(parseInt(de[0]) + parseInt(de[1]))
+    const tong = String((parseInt(de[0]) + parseInt(de[1])) % 10)
     if (!dauLastSeen[dau])   dauLastSeen[dau]   = d
     if (!duoiLastSeen[duoi]) duoiLastSeen[duoi] = d
     if (!tongLastSeen[tong]) tongLastSeen[tong] = d
@@ -596,27 +596,41 @@ exports.quickDe = asyncHandler(async (req, res) => {
   const gan = {
     dau:  topGan(dauLastSeen,  Array.from({ length: 10 }, (_, i) => String(i)),        'dau'),
     duoi: topGan(duoiLastSeen, Array.from({ length: 10 }, (_, i) => String(i)),        'duoi'),
-    tong: topGan(tongLastSeen, Array.from({ length: 19 }, (_, i) => String(i)),        'tong'),
+    tong: topGan(tongLastSeen, Array.from({ length: 10 }, (_, i) => String(i)),        'tong'),
   }
 
-  // ── Section 3: Đề nóng trong N ngày ─────────────────────────────────────
+  // ── Section 3: Đầu / đuôi / tổng về nhiều nhất trong N ngày ────────────
   const daysStart    = new Date(endDate)
   daysStart.setUTCDate(endDate.getUTCDate() - days + 1)
   const daysStartStr = fmtDate(daysStart)
 
-  const deFreq = {}
+  const dauFreqNong  = {}
+  const duoiFreqNong = {}
+  const tongFreqNong = {}
+
   for (const r of results) {
     if (fmtDate(r.date) < daysStartStr) continue
     const de = extractDe(r)
-    if (de) deFreq[de] = (deFreq[de] || 0) + 1
+    if (!de) continue
+    const dau  = de[0]
+    const duoi = de[1]
+    const tong = String((parseInt(de[0]) + parseInt(de[1])) % 10)
+    dauFreqNong[dau]   = (dauFreqNong[dau]   || 0) + 1
+    duoiFreqNong[duoi] = (duoiFreqNong[duoi] || 0) + 1
+    tongFreqNong[tong] = (tongFreqNong[tong] || 0) + 1
   }
+
+  const top3 = (freq, field) =>
+    Object.entries(freq)
+      .map(([k, count]) => ({ [field]: k, count }))
+      .sort((a, b) => b.count - a.count || a[field].localeCompare(b[field]))
+      .slice(0, 3)
 
   const deNong = {
     days,
-    data: Object.entries(deFreq)
-      .map(([de, count]) => ({ de, dau: de[0], duoi: de[1], count }))
-      .sort((a, b) => b.count - a.count || a.de.localeCompare(b.de))
-      .slice(0, 5),
+    dau:  top3(dauFreqNong,  'dau'),
+    duoi: top3(duoiFreqNong, 'duoi'),
+    tong: top3(tongFreqNong, 'tong'),
   }
 
   // ── Section 4: Ngày này năm xưa ─────────────────────────────────────────
